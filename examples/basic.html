@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WFL Animator - Basic Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        #canvas {
+            border: 1px solid #ccc;
+            background: #f0f0f0;
+        }
+        .controls {
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="range"] {
+            width: 100%;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>WFL Animator - Basic Example</h1>
+    
+    <canvas id="canvas" width="800" height="600"></canvas>
+    
+    <div class="controls">
+        <div class="control-group">
+            <label>Mouth State: <span id="mouthValue">0</span></label>
+            <input type="range" id="mouthSlider" min="0" max="6" value="0" step="1">
+        </div>
+        
+        <div class="control-group">
+            <label>Head Turn: <span id="headValue">0</span>°</label>
+            <input type="range" id="headSlider" min="-45" max="45" value="0">
+        </div>
+        
+        <div class="control-group">
+            <label>Eye State: <span id="eyeValue">0</span></label>
+            <input type="range" id="eyeSlider" min="0" max="4" value="0" step="1">
+        </div>
+        
+        <div class="control-group">
+            <label>Roast Tone: <span id="toneValue">0</span></label>
+            <input type="range" id="toneSlider" min="0" max="3" value="0" step="1">
+        </div>
+        
+        <div class="control-group">
+            <label>Is Talking</label>
+            <button id="talkingBtn">Toggle</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { WFLAnimator } from '../src/animator.js';
+
+        const canvas = document.getElementById('canvas');
+        const animator = new WFLAnimator();
+        
+        // Initialize canvas
+        animator.initCanvas(canvas);
+        
+        // Load animation file (when you have one)
+        // await animator.load('assets/character.wfl');
+        
+        // Setup controls
+        const mouthSlider = document.getElementById('mouthSlider');
+        const headSlider = document.getElementById('headSlider');
+        const eyeSlider = document.getElementById('eyeSlider');
+        const toneSlider = document.getElementById('toneSlider');
+        const talkingBtn = document.getElementById('talkingBtn');
+        
+        let isTalking = false;
+        
+        mouthSlider.addEventListener('input', (e) => {
+            const value = parseInt(e.target.value);
+            document.getElementById('mouthValue').textContent = value;
+            animator.setMouth(value);
+        });
+        
+        headSlider.addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            document.getElementById('headValue').textContent = value;
+            animator.setHeadTurn(value);
+        });
+        
+        eyeSlider.addEventListener('input', (e) => {
+            const value = parseInt(e.target.value);
+            document.getElementById('eyeValue').textContent = value;
+            animator.setEye(value);
+        });
+        
+        toneSlider.addEventListener('input', (e) => {
+            const value = parseInt(e.target.value);
+            document.getElementById('toneValue').textContent = value;
+            animator.setTone(value);
+        });
+        
+        talkingBtn.addEventListener('click', () => {
+            isTalking = !isTalking;
+            animator.setTalking(isTalking);
+            talkingBtn.textContent = isTalking ? 'Stop Talking' : 'Start Talking';
+        });
+    </script>
+</body>
+</html>
+

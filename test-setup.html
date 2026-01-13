@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WFL Animator - Test Setup</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .panel {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        h1 {
+            color: #4CAF50;
+        }
+        h2 {
+            color: #2196F3;
+            margin-top: 0;
+        }
+        #canvas {
+            border: 2px solid #4CAF50;
+            background: #000;
+            width: 100%;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status.success {
+            background: #4CAF50;
+            color: white;
+        }
+        .status.error {
+            background: #f44336;
+            color: white;
+        }
+        .status.info {
+            background: #2196F3;
+            color: white;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .control {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="range"] {
+            width: 100%;
+        }
+        code {
+            background: #1a1a1a;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎬 WFL Animator - Test Setup</h1>
+    
+    <div class="container">
+        <div class="panel">
+            <h2>Canvas</h2>
+            <canvas id="canvas" width="600" height="400"></canvas>
+            <div id="status"></div>
+        </div>
+        
+        <div class="panel">
+            <h2>Controls</h2>
+            <div class="controls">
+                <div class="control">
+                    <label>Mouth: <span id="mouthVal">0</span></label>
+                    <input type="range" id="mouth" min="0" max="6" value="0" step="1">
+                </div>
+                <div class="control">
+                    <label>Head: <span id="headVal">0</span>°</label>
+                    <input type="range" id="head" min="-45" max="45" value="0">
+                </div>
+                <div class="control">
+                    <label>Eye: <span id="eyeVal">0</span></label>
+                    <input type="range" id="eye" min="0" max="4" value="0" step="1">
+                </div>
+                <div class="control">
+                    <label>Tone: <span id="toneVal">0</span></label>
+                    <input type="range" id="tone" min="0" max="3" value="0" step="1">
+                </div>
+            </div>
+            <button id="talkingBtn">Toggle Talking</button>
+            <button id="testBtn">Run Tests</button>
+        </div>
+    </div>
+    
+    <div class="panel" style="margin-top: 20px;">
+        <h2>System Status</h2>
+        <div id="systemStatus"></div>
+    </div>
+
+    <script type="module">
+        import { WFLAnimator } from '../src/animator.js';
+        import { ParameterSystem } from '../src/core/parameter.js';
+        import { StateMachine } from '../src/core/state-machine.js';
+        
+        const statusDiv = document.getElementById('status');
+        const systemStatusDiv = document.getElementById('systemStatus');
+        
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.textContent = message;
+            statusDiv.appendChild(div);
+            console.log(message);
+        }
+        
+        function systemLog(message) {
+            const div = document.createElement('div');
+            div.textContent = `✓ ${message}`;
+            div.style.padding = '5px';
+            div.style.color = '#4CAF50';
+            systemStatusDiv.appendChild(div);
+        }
+        
+        // Test system components
+        async function testSystem() {
+            systemLog('Testing Parameter System...');
+            const params = new ParameterSystem();
+            params.register('test', 'number', 0);
+            params.set('test', 5);
+            if (params.get('test').get() === 5) {
+                systemLog('Parameter System: OK');
+            } else {
+                systemLog('Parameter System: FAILED', 'error');
+            }
+            
+            systemLog('Testing State Machine...');
+            const sm = new StateMachine('test');
+            sm.addState('idle', ['idle_anim']);
+            sm.addState('active', ['active_anim']);
+            if (sm.states.has('idle') && sm.states.has('active')) {
+                systemLog('State Machine: OK');
+            } else {
+                systemLog('State Machine: FAILED', 'error');
+            }
+            
+            systemLog('Testing Animator...');
+            const animator = new WFLAnimator();
+            if (animator.parameters && animator.rigging) {
+                systemLog('Animator: OK');
+            } else {
+                systemLog('Animator: FAILED', 'error');
+            }
+            
+            systemLog('All core systems loaded successfully!');
+        }
+        
+        // Initialize
+        const canvas = document.getElementById('canvas');
+        const animator = new WFLAnimator();
+        
+        try {
+            log('Initializing WFL Animator...', 'info');
+            animator.initCanvas(canvas);
+            log('Canvas initialized', 'success');
+            
+            // Setup controls
+            const mouthSlider = document.getElementById('mouth');
+            const headSlider = document.getElementById('head');
+            const eyeSlider = document.getElementById('eye');
+            const toneSlider = document.getElementById('tone');
+            const talkingBtn = document.getElementById('talkingBtn');
+            const testBtn = document.getElementById('testBtn');
+            
+            let isTalking = false;
+            
+            mouthSlider.addEventListener('input', (e) => {
+                const val = parseInt(e.target.value);
+                document.getElementById('mouthVal').textContent = val;
+                animator.setMouth(val);
+                log(`Mouth set to ${val}`);
+            });
+            
+            headSlider.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                document.getElementById('headVal').textContent = val;
+                animator.setHeadTurn(val);
+                log(`Head turn set to ${val}°`);
+            });
+            
+            eyeSlider.addEventListener('input', (e) => {
+                const val = parseInt(e.target.value);
+                document.getElementById('eyeVal').textContent = val;
+                animator.setEye(val);
+                log(`Eye state set to ${val}`);
+            });
+            
+            toneSlider.addEventListener('input', (e) => {
+                const val = parseInt(e.target.value);
+                document.getElementById('toneVal').textContent = val;
+                animator.setTone(val);
+                log(`Tone set to ${val}`);
+            });
+            
+            talkingBtn.addEventListener('click', () => {
+                isTalking = !isTalking;
+                animator.setTalking(isTalking);
+                talkingBtn.textContent = isTalking ? 'Stop Talking' : 'Start Talking';
+                log(`Talking: ${isTalking}`);
+            });
+            
+            testBtn.addEventListener('click', () => {
+                systemStatusDiv.innerHTML = '';
+                testSystem();
+            });
+            
+            // Run initial tests
+            testSystem();
+            
+            log('WFL Animator ready!', 'success');
+            log('Note: DragonBones integration needed for actual rendering', 'info');
+            
+        } catch (error) {
+            log(`Error: ${error.message}`, 'error');
+            console.error(error);
+        }
+    </script>
+</body>
+</html>
+

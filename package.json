@@ -1,0 +1,20 @@
+{
+  "name": "wfl-animator",
+  "version": "1.0.0",
+  "description": "Custom animation system for WFL",
+  "type": "module",
+  "main": "src/animator.js",
+  "scripts": {
+    "dev": "python3 -m http.server 8000",
+    "build": "echo 'Build script to be implemented'"
+  },
+  "keywords": [
+    "animation",
+    "wfl",
+    "dragonbones",
+    "state-machine"
+  ],
+  "author": "WFL",
+  "license": "MIT"
+}
+

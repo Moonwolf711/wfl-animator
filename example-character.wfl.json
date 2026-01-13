@@ -1,0 +1,136 @@
+{
+  "version": 1,
+  "metadata": {
+    "name": "Cockpit Character",
+    "author": "WFL",
+    "description": "Example WFL character file"
+  },
+  "parameters": {
+    "mouthState": {
+      "type": "number",
+      "value": 0,
+      "min": 0,
+      "max": 6,
+      "description": "Mouth shape (0=closed, 1=a, 2=e, 3=i, 4=o, 5=u, 6=f)"
+    },
+    "headTurn": {
+      "type": "number",
+      "value": 0,
+      "min": -45,
+      "max": 45,
+      "description": "Head rotation in degrees"
+    },
+    "eyeState": {
+      "type": "number",
+      "value": 0,
+      "min": 0,
+      "max": 4,
+      "description": "Eye state (0=open, 1=closed, 2=half, 3=squint, 4=wide)"
+    },
+    "roastTone": {
+      "type": "number",
+      "value": 0,
+      "min": 0,
+      "max": 3,
+      "description": "Expression intensity"
+    },
+    "isTalking": {
+      "type": "boolean",
+      "value": false,
+      "description": "Talking animation trigger"
+    }
+  },
+  "stateMachine": {
+    "name": "CockpitSM",
+    "states": {
+      "idle": {
+        "animations": ["idle"],
+        "transitions": [
+          {
+            "targetState": "talking",
+            "condition": "isTalking === true"
+          }
+        ]
+      },
+      "talking": {
+        "animations": ["talk_loop"],
+        "transitions": [
+          {
+            "targetState": "idle",
+            "condition": "isTalking === false"
+          }
+        ]
+      }
+    },
+    "entryState": "idle"
+  },
+  "animations": {
+    "mouth_closed": {
+      "type": "bone_animation",
+      "duration": 0.1
+    },
+    "mouth_a": {
+      "type": "bone_animation",
+      "duration": 0.1
+    },
+    "mouth_e": {
+      "type": "bone_animation",
+      "duration": 0.1
+    },
+    "mouth_i": {
+      "type": "bone_animation",
+      "duration": 0.1
+    },
+    "mouth_o": {
+      "type": "bone_animation",
+      "duration": 0.1
+    },
+    "mouth_u": {
+      "type": "bone_animation",
+      "duration": 0.1
+    },
+    "mouth_f": {
+      "type": "bone_animation",
+      "duration": 0.1
+    },
+    "eyes_open": {
+      "type": "bone_animation",
+      "duration": 0.2
+    },
+    "eyes_closed": {
+      "type": "bone_animation",
+      "duration": 0.2
+    },
+    "eyes_half": {
+      "type": "bone_animation",
+      "duration": 0.2
+    },
+    "eyes_squint": {
+      "type": "bone_animation",
+      "duration": 0.2
+    },
+    "eyes_wide": {
+      "type": "bone_animation",
+      "duration": 0.2
+    },
+    "talking": {
+      "type": "bone_animation",
+      "duration": 1.0,
+      "loop": true
+    },
+    "idle": {
+      "type": "bone_animation",
+      "duration": 2.0,
+      "loop": true
+    }
+  },
+  "bones": {
+    "skeleton": {
+      "note": "DragonBones skeleton data goes here"
+    },
+    "textures": {
+      "note": "DragonBones texture atlas data goes here"
+    }
+  }
+}
+
