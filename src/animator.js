@@ -25,6 +25,12 @@ export class WFLAnimator {
     this.animationFrame = null;
     this.lastTime = 0;
 
+    // Sprite-based rendering (fallback when DragonBones not available)
+    this.sprites = new Map();       // name -> HTMLImageElement
+    this.characterSprite = null;    // Current character base sprite
+    this.mouthSprites = [];         // Mouth shape sprites (indexed by mouthState)
+    this.eyeSprites = [];           // Eye sprites (indexed by eyeState)
+
     // Claude-Cowork inspired systems
     this.eventBus = options.eventBus || globalEventBus;
     this.streaming = new StreamingState(this.eventBus);
@@ -104,38 +110,50 @@ export class WFLAnimator {
    */
   setupParameterListeners() {
     // Mouth state -> play mouth animation
-    this.parameters.get('mouthState').onChange((name, value) => {
-      const mouthAnimations = ['mouth_closed', 'mouth_a', 'mouth_e', 'mouth_i', 'mouth_o', 'mouth_u', 'mouth_f'];
-      if (value >= 0 && value < mouthAnimations.length) {
-        this.rigging.playAnimation(mouthAnimations[value]);
-      }
-      this.emitParameterChange(name, value);
-    });
+    const mouthParam = this.parameters.get('mouthState');
+    if (mouthParam) {
+      mouthParam.onChange((name, value) => {
+        const mouthAnimations = ['mouth_closed', 'mouth_a', 'mouth_e', 'mouth_i', 'mouth_o', 'mouth_u', 'mouth_f'];
+        if (value >= 0 && value < mouthAnimations.length) {
+          this.rigging.playAnimation(mouthAnimations[value]);
+        }
+        this.emitParameterChange(name, value);
+      });
+    }
 
     // Head turn -> rotate head bone
-    this.parameters.get('headTurn').onChange((name, value) => {
-      this.rigging.setBoneRotation('head', value);
-      this.emitParameterChange(name, value);
-    });
+    const headParam = this.parameters.get('headTurn');
+    if (headParam) {
+      headParam.onChange((name, value) => {
+        this.rigging.setBoneRotation('head', value);
+        this.emitParameterChange(name, value);
+      });
+    }
 
     // Eye state -> play eye animation
-    this.parameters.get('eyeState').onChange((name, value) => {
-      const eyeAnimations = ['eyes_open', 'eyes_closed', 'eyes_half', 'eyes_squint', 'eyes_wide'];
-      if (value >= 0 && value < eyeAnimations.length) {
-        this.rigging.playAnimation(eyeAnimations[value]);
-      }
-      this.emitParameterChange(name, value);
-    });
+    const eyeParam = this.parameters.get('eyeState');
+    if (eyeParam) {
+      eyeParam.onChange((name, value) => {
+        const eyeAnimations = ['eyes_open', 'eyes_closed', 'eyes_half', 'eyes_squint', 'eyes_wide'];
+        if (value >= 0 && value < eyeAnimations.length) {
+          this.rigging.playAnimation(eyeAnimations[value]);
+        }
+        this.emitParameterChange(name, value);
+      });
+    }
 
     // Talking -> play talking animation loop
-    this.parameters.get('isTalking').onChange((name, value) => {
-      if (value) {
-        this.rigging.playAnimation('talking', -1); // Loop
-      } else {
-        this.rigging.stopAnimation('talking');
-      }
-      this.emitParameterChange(name, value);
-    });
+    const talkingParam = this.parameters.get('isTalking');
+    if (talkingParam) {
+      talkingParam.onChange((name, value) => {
+        if (value) {
+          this.rigging.playAnimation('talking', -1); // Loop
+        } else {
+          this.rigging.stopAnimation('talking');
+        }
+        this.emitParameterChange(name, value);
+      });
+    }
   }
 
   /**
@@ -208,9 +226,14 @@ export class WFLAnimator {
       this.setupStateMachine(this.file.stateMachine);
     }
 
-    // Load bone rigging data
-    if (this.file.bones) {
-      // TODO: Load DragonBones data
+    // Load bone rigging data if DragonBones factory is available
+    if (this.file.bones && this.rigging.factory) {
+      this.rigging.loadArmature(this.file.bones.skeleton, this.file.bones.textureAtlas);
+    }
+
+    // Load sprite-based character data (fallback rendering)
+    if (this.file.sprites) {
+      await this.loadSprites(this.file.sprites);
     }
 
     return this.file;
@@ -255,12 +278,47 @@ export class WFLAnimator {
   }
 
   /**
-   * Create condition function from string
+   * Create condition function from condition string
+   * Supports: parameter comparisons (e.g. "isTalking === true", "mouthState > 3")
+   * Supports: logical operators (&& ||)
    */
-  createConditionFunction(_conditionStr) {
-    return (_parameters) => {
-      // TODO: Implement proper condition parsing
-      return false;
+  createConditionFunction(conditionStr) {
+    if (!conditionStr || typeof conditionStr !== 'string') {
+      return () => false;
+    }
+
+    // Parse the condition into a safe evaluator
+    // Supported operators: ===, !==, ==, !=, >, <, >=, <=, &&, ||, !
+    return (parameters) => {
+      try {
+        // Replace parameter names with their actual values
+        let expr = conditionStr;
+
+        // Get all registered parameter names, sorted longest-first to avoid partial matches
+        const paramNames = parameters.getAll()
+          .map(p => p.name)
+          .sort((a, b) => b.length - a.length);
+
+        for (const name of paramNames) {
+          const param = parameters.get(name);
+          if (!param) continue;
+          const value = param.get();
+          const replacement = typeof value === 'string' ? `"${value}"` : String(value);
+          // Use word boundary matching to avoid partial replacements
+          expr = expr.replace(new RegExp(`\\b${name}\\b`, 'g'), replacement);
+        }
+
+        // Validate: only allow safe characters (numbers, booleans, operators, whitespace, parens)
+        const safePattern = /^[\d\s.+\-*/<>=!&|()true false"null]+$/;
+        if (!safePattern.test(expr)) {
+          return false;
+        }
+
+        // Evaluate the safe expression
+        return Boolean(new Function(`return (${expr});`)());
+      } catch (_e) {
+        return false;
+      }
     };
   }
 
@@ -320,15 +378,44 @@ export class WFLAnimator {
     this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
     if (this.rigging.armatureDisplay) {
-      // DragonBones rendering
+      // DragonBones canvas rendering
+      const display = this.rigging.getDisplay();
+      if (display && display.draw) {
+        display.draw(this.context);
+      }
+    } else if (this.characterSprite || this.mouthSprites.length > 0) {
+      // Sprite-based rendering
+      this.renderSprites();
     } else {
       this.drawPlaceholder();
+    }
+
+    // Draw state machine info overlay (debug)
+    if (this.stateMachine?.currentState) {
+      this.drawStateOverlay();
     }
 
     // Draw streaming indicator if active
     if (this.streaming.isActive()) {
       this.drawStreamingIndicator();
     }
+  }
+
+  /**
+   * Draw current state machine state as debug overlay
+   */
+  drawStateOverlay() {
+    const ctx = this.context;
+    const state = this.stateMachine.currentState.name;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(this.canvas.width - 160, 10, 150, 24);
+    ctx.fillStyle = '#fff';
+    ctx.font = '12px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(`State: ${state}`, this.canvas.width - 18, 27);
+    ctx.restore();
   }
 
   /**
@@ -366,6 +453,121 @@ export class WFLAnimator {
 
     const progress = state.progress ? `${Math.round(state.progress * 100)}%` : 'Loading...';
     ctx.fillText(`Loading ${progress}`, 20, 30);
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Sprite Loading & Rendering
+  // ─────────────────────────────────────────────────────────────────
+
+  /**
+   * Load sprite images from file data
+   * @param {Object} spriteData - { base, mouths[], eyes[], positions }
+   */
+  async loadSprites(spriteData) {
+    const loadImage = (src) => {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error(`Failed to load image: ${src}`));
+        img.src = src;
+      });
+    };
+
+    try {
+      // Load base character sprite
+      if (spriteData.base) {
+        this.characterSprite = await loadImage(spriteData.base);
+        this.sprites.set('base', this.characterSprite);
+      }
+
+      // Load mouth sprites (indexed by mouthState parameter)
+      if (spriteData.mouths && Array.isArray(spriteData.mouths)) {
+        this.mouthSprites = [];
+        for (const src of spriteData.mouths) {
+          this.mouthSprites.push(await loadImage(src));
+        }
+      }
+
+      // Load eye sprites (indexed by eyeState parameter)
+      if (spriteData.eyes && Array.isArray(spriteData.eyes)) {
+        this.eyeSprites = [];
+        for (const src of spriteData.eyes) {
+          this.eyeSprites.push(await loadImage(src));
+        }
+      }
+
+      // Store position offsets for compositing
+      this.spritePositions = spriteData.positions || {
+        mouth: { x: 0, y: 0 },
+        eyes: { x: 0, y: 0 }
+      };
+    } catch (error) {
+      this.eventBus.emit({
+        type: EventTypes.ERROR,
+        payload: { message: `Failed to load sprites: ${error.message}`, error }
+      });
+    }
+  }
+
+  /**
+   * Load a single sprite by name for custom rendering
+   */
+  async loadSprite(name, src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        this.sprites.set(name, img);
+        resolve(img);
+      };
+      img.onerror = () => reject(new Error(`Failed to load sprite: ${src}`));
+      img.src = src;
+    });
+  }
+
+  /**
+   * Render sprites to canvas (composites base + mouth + eyes)
+   */
+  renderSprites() {
+    const ctx = this.context;
+
+    // Draw base character
+    if (this.characterSprite) {
+      const scale = Math.min(
+        this.canvas.width / this.characterSprite.width,
+        this.canvas.height / this.characterSprite.height
+      );
+      const w = this.characterSprite.width * scale;
+      const h = this.characterSprite.height * scale;
+      const x = (this.canvas.width - w) / 2;
+      const y = (this.canvas.height - h) / 2;
+
+      // Apply head turn rotation
+      const headTurn = this.parameters.get('headTurn')?.get() || 0;
+      if (headTurn !== 0) {
+        ctx.save();
+        ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
+        ctx.rotate((headTurn * Math.PI) / 180);
+        ctx.translate(-this.canvas.width / 2, -this.canvas.height / 2);
+        ctx.drawImage(this.characterSprite, x, y, w, h);
+        ctx.restore();
+      } else {
+        ctx.drawImage(this.characterSprite, x, y, w, h);
+      }
+    }
+
+    // Overlay mouth sprite
+    const mouthState = this.parameters.get('mouthState')?.get() || 0;
+    if (this.mouthSprites[mouthState]) {
+      const pos = this.spritePositions?.mouth || { x: 0, y: 0 };
+      ctx.drawImage(this.mouthSprites[mouthState], pos.x, pos.y);
+    }
+
+    // Overlay eye sprite
+    const eyeState = this.parameters.get('eyeState')?.get() || 0;
+    if (this.eyeSprites[eyeState]) {
+      const pos = this.spritePositions?.eyes || { x: 0, y: 0 };
+      ctx.drawImage(this.eyeSprites[eyeState], pos.x, pos.y);
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────
@@ -550,6 +752,12 @@ export class WFLAnimator {
   dispose() {
     if (this.animationFrame) {
       cancelAnimationFrame(this.animationFrame);
+      this.animationFrame = null;
+    }
+
+    if (this.permissionDialog) {
+      this.permissionDialog.dispose();
+      this.permissionDialog = null;
     }
 
     this.eventBus.emit({
@@ -559,6 +767,16 @@ export class WFLAnimator {
 
     // Clear event listeners
     this.eventBus.clear();
+
+    // Release references
+    this.canvas = null;
+    this.context = null;
+    this.file = null;
+    this.stateMachine = null;
+    this.sprites.clear();
+    this.characterSprite = null;
+    this.mouthSprites = [];
+    this.eyeSprites = [];
   }
 }
 

@@ -18,12 +18,14 @@ export default [
         setTimeout: 'readonly',
         indexedDB: 'readonly',
         AbortController: 'readonly',
+        Image: 'readonly',
+        Function: 'readonly',
         console: 'readonly',
       }
     },
     rules: {
       // Errors
-      'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
       'no-undef': 'error',
       'no-shadow': 'warn',
       'eqeqeq': ['error', 'always'],
