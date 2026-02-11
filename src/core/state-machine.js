@@ -21,6 +21,9 @@ export class StateMachine {
     this.currentState = null;
     this.entryState = null;
     this.onStateChange = null;
+    this._stateEnterCallbacks = [];
+    this._stateExitCallbacks = [];
+    this.eventBus = null;
   }
 
   /**
@@ -54,6 +57,128 @@ export class StateMachine {
   }
 
   /**
+   * Remove a state and all transitions referencing it
+   */
+  removeState(name) {
+    const state = this.states.get(name);
+    if (!state) return false;
+
+    // Remove transitions from other states that target this state
+    this.states.forEach((s) => {
+      s.transitions = s.transitions.filter(t => t.targetState !== state);
+    });
+
+    // If this was the entry state, clear it
+    if (this.entryState === state) {
+      this.entryState = null;
+    }
+
+    // If this was the current state, clear it
+    if (this.currentState === state) {
+      this.currentState = null;
+    }
+
+    this.states.delete(name);
+    return true;
+  }
+
+  /**
+   * Remove a specific transition between two states
+   */
+  removeTransition(fromStateName, toStateName) {
+    const fromState = this.states.get(fromStateName);
+    const toState = this.states.get(toStateName);
+    if (!fromState || !toState) return false;
+
+    const before = fromState.transitions.length;
+    fromState.transitions = fromState.transitions.filter(t => t.targetState !== toState);
+    return fromState.transitions.length < before;
+  }
+
+  /**
+   * Get a state by name (or undefined)
+   */
+  getState(name) {
+    return this.states.get(name);
+  }
+
+  /**
+   * Get transitions from a state
+   */
+  getTransitions(stateName) {
+    const state = this.states.get(stateName);
+    if (!state) return [];
+    return state.transitions;
+  }
+
+  /**
+   * Validate the state machine for unreachable states
+   * @returns {{ valid: boolean, issues: string[] }}
+   */
+  validate() {
+    const issues = [];
+
+    if (this.states.size === 0) {
+      issues.push('State machine has no states');
+      return { valid: issues.length === 0, issues };
+    }
+
+    if (!this.entryState) {
+      issues.push('No entry state defined');
+    }
+
+    // Find reachable states via BFS from entry state
+    const reachable = new Set();
+    if (this.entryState) {
+      const queue = [this.entryState.name];
+      while (queue.length > 0) {
+        const current = queue.shift();
+        if (reachable.has(current)) continue;
+        reachable.add(current);
+        const state = this.states.get(current);
+        if (state) {
+          for (const t of state.transitions) {
+            if (!reachable.has(t.targetState.name)) {
+              queue.push(t.targetState.name);
+            }
+          }
+        }
+      }
+    }
+
+    // Check for unreachable states
+    this.states.forEach((_state, name) => {
+      if (!reachable.has(name)) {
+        issues.push(`State "${name}" is unreachable from entry state`);
+      }
+    });
+
+    return { valid: issues.length === 0, issues };
+  }
+
+  /**
+   * Register a callback to fire when entering a state
+   */
+  onStateEnter(callback) {
+    this._stateEnterCallbacks.push(callback);
+    return () => {
+      const idx = this._stateEnterCallbacks.indexOf(callback);
+      if (idx > -1) this._stateEnterCallbacks.splice(idx, 1);
+    };
+  }
+
+  /**
+   * Register a callback to fire when exiting a state
+   */
+  onStateExit(callback) {
+    this._stateExitCallbacks.push(callback);
+    return () => {
+      const idx = this._stateExitCallbacks.indexOf(callback);
+      if (idx > -1) this._stateExitCallbacks.splice(idx, 1);
+    };
+  }
+
+  /**
    * Evaluate transitions and update state
    */
   update(parameters) {
@@ -79,10 +204,47 @@ export class StateMachine {
     if (!state) return;
 
     const oldState = this.currentState;
+
+    // Emit TRANSITION_START event
+    if (this.eventBus) {
+      this.eventBus.emit({
+        type: 'transition.start',
+        payload: { fromState: oldState?.name, toState: state.name }
+      });
+    }
+
+    // Fire exit callbacks for old state
+    if (oldState) {
+      this._stateExitCallbacks.forEach(cb => cb(oldState.name));
+      if (this.eventBus) {
+        this.eventBus.emit({
+          type: 'state.exit',
+          payload: { state: oldState.name }
+        });
+      }
+    }
+
     this.currentState = state;
+
+    // Fire enter callbacks for new state
+    this._stateEnterCallbacks.forEach(cb => cb(state.name));
+    if (this.eventBus) {
+      this.eventBus.emit({
+        type: 'state.enter',
+        payload: { state: state.name }
+      });
+    }
 
     if (this.onStateChange) {
       this.onStateChange(state.name, oldState?.name);
+    }
+
+    // Emit TRANSITION_COMPLETE event
+    if (this.eventBus) {
+      this.eventBus.emit({
+        type: 'transition.complete',
+        payload: { fromState: oldState?.name, toState: state.name }
+      });
     }
   }
 

@@ -24,6 +24,8 @@ export class WFLAnimator {
     this.context = null;
     this.animationFrame = null;
     this.lastTime = 0;
+    this._paused = false;
+    this._speed = 1.0;
 
     // Sprite-based rendering (fallback when DragonBones not available)
     this.sprites = new Map();       // name -> HTMLImageElement
@@ -246,6 +248,7 @@ export class WFLAnimator {
    */
   setupStateMachine(data) {
     this.stateMachine = new StateMachine(data.name);
+    this.stateMachine.eventBus = this.eventBus;
 
     // Add states
     Object.entries(data.states).forEach(([name, stateData]) => {
@@ -346,8 +349,16 @@ export class WFLAnimator {
         return;
       }
 
-      const deltaTime = (currentTime - this.lastTime) / 1000;
+      const rawDelta = (currentTime - this.lastTime) / 1000;
       this.lastTime = currentTime;
+
+      // Skip updates when paused
+      if (this._paused) {
+        this.animationFrame = requestAnimationFrame(animate);
+        return;
+      }
+
+      const deltaTime = rawDelta * this._speed;
 
       // Update state machine
       if (this.stateMachine) {
@@ -671,6 +682,56 @@ export class WFLAnimator {
       return true;
     }
     return false;
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Convenience API
+  // ─────────────────────────────────────────────────────────────────
+
+  /**
+   * Pause the animation loop (requestAnimationFrame still runs but skips updates)
+   */
+  pause() {
+    this._paused = true;
+  }
+
+  /**
+   * Resume animation updates
+   */
+  resume() {
+    this._paused = false;
+  }
+
+  /**
+   * Whether the animation is currently paused
+   */
+  get isPaused() {
+    return this._paused;
+  }
+
+  /**
+   * Set a time multiplier for animation speed (default 1.0)
+   */
+  setSpeed(multiplier) {
+    this._speed = multiplier;
+  }
+
+  /**
+   * Get the current value of a parameter (shorthand)
+   * @param {string} name - Parameter name
+   * @returns {*} Current value, or undefined if parameter not found
+   */
+  getParameter(name) {
+    const param = this.parameters.get(name);
+    return param ? param.get() : undefined;
+  }
+
+  /**
+   * Get the current state machine state name
+   * @returns {string|null} Current state name, or null if no state machine
+   */
+  getCurrentState() {
+    return this.stateMachine?.currentState?.name || null;
   }
 
   // ─────────────────────────────────────────────────────────────────

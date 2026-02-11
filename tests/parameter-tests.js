@@ -265,5 +265,119 @@ export async function runParameterTests() {
     assertEqual(system2.get('c').type, 'trigger', 'c type should roundtrip');
   });
 
+  // ─────────────────────────────────────────────────────────────────
+  // has()
+  // ─────────────────────────────────────────────────────────────────
+  TestRunner.category('Parameter - has()');
+
+  TestRunner.test('should return true for existing parameter', () => {
+    const system = new ParameterSystem();
+    system.register('speed', 'number', 5);
+    assertEqual(system.has('speed'), true, 'Should return true for registered param');
+  });
+
+  TestRunner.test('should return false for non-existent parameter', () => {
+    const system = new ParameterSystem();
+    assertEqual(system.has('nonexistent'), false, 'Should return false for unknown param');
+  });
+
+  TestRunner.test('should return true after registering then checking', () => {
+    const system = new ParameterSystem();
+    assertEqual(system.has('x'), false, 'Should be false before register');
+    system.register('x', 'number', 0);
+    assertEqual(system.has('x'), true, 'Should be true after register');
+  });
+
+  // ─────────────────────────────────────────────────────────────────
+  // reset()
+  // ─────────────────────────────────────────────────────────────────
+  TestRunner.category('Parameter - reset()');
+
+  TestRunner.test('should reset all parameters to default values', () => {
+    const system = new ParameterSystem();
+    system.register('speed', 'number', 5);
+    system.register('active', 'boolean', false);
+
+    system.set('speed', 100);
+    system.set('active', true);
+    assertEqual(system.get('speed').get(), 100, 'Speed should be 100 before reset');
+    assertEqual(system.get('active').get(), true, 'Active should be true before reset');
+
+    system.reset();
+    assertEqual(system.get('speed').get(), 5, 'Speed should be reset to 5');
+    assertEqual(system.get('active').get(), false, 'Active should be reset to false');
+  });
+
+  TestRunner.test('should reset to null default', () => {
+    const system = new ParameterSystem();
+    system.register('val', 'number');
+    system.set('val', 42);
+    system.reset();
+    assertEqual(system.get('val').get(), null, 'Should reset to null default');
+  });
+
+  TestRunner.test('should fire onChange listeners on reset', () => {
+    const system = new ParameterSystem();
+    system.register('x', 'number', 0);
+    system.set('x', 10);
+
+    let called = false;
+    system.get('x').onChange(() => { called = true; });
+    system.reset();
+    assertEqual(called, true, 'onChange should fire during reset');
+  });
+
+  // ─────────────────────────────────────────────────────────────────
+  // setMultiple()
+  // ─────────────────────────────────────────────────────────────────
+  TestRunner.category('Parameter - setMultiple()');
+
+  TestRunner.test('should set multiple parameters at once', () => {
+    const system = new ParameterSystem();
+    system.register('a', 'number', 0);
+    system.register('b', 'number', 0);
+    system.register('c', 'boolean', false);
+
+    system.setMultiple({ a: 10, b: 20, c: true });
+    assertEqual(system.get('a').get(), 10, 'a should be 10');
+    assertEqual(system.get('b').get(), 20, 'b should be 20');
+    assertEqual(system.get('c').get(), true, 'c should be true');
+  });
+
+  TestRunner.test('should silently ignore non-existent parameters in setMultiple', () => {
+    const system = new ParameterSystem();
+    system.register('a', 'number', 0);
+
+    // Should not throw even though 'b' does not exist
+    system.setMultiple({ a: 5, b: 99 });
+    assertEqual(system.get('a').get(), 5, 'a should be set');
+  });
+
+  TestRunner.test('should fire onChange for each parameter in setMultiple', () => {
+    const system = new ParameterSystem();
+    system.register('x', 'number', 0);
+    system.register('y', 'number', 0);
+
+    const changed = [];
+    system.get('x').onChange((name) => changed.push(name));
+    system.get('y').onChange((name) => changed.push(name));
+
+    system.setMultiple({ x: 1, y: 2 });
+    assert(changed.includes('x'), 'x onChange should fire');
+    assert(changed.includes('y'), 'y onChange should fire');
+  });
+
+  // ─────────────────────────────────────────────────────────────────
+  // Parameter.defaultValue
+  // ─────────────────────────────────────────────────────────────────
+  TestRunner.category('Parameter - defaultValue tracking');
+
+  TestRunner.test('should store defaultValue on Parameter instance', () => {
+    const param = new Parameter('x', 'number', 42);
+    assertEqual(param.defaultValue, 42, 'defaultValue should be stored');
+    param.set(100);
+    assertEqual(param.defaultValue, 42, 'defaultValue should not change after set');
+  });
+
   return TestRunner.summary();
 }

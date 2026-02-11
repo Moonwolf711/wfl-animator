@@ -149,6 +149,36 @@ function createTestAnimator() {
       if (snapshot.stateMachine) {
         this.setupStateMachine(snapshot.stateMachine);
       }
+    },
+
+    // ── Convenience API (matches WFLAnimator) ──
+
+    _paused: false,
+    _speed: 1.0,
+
+    pause() {
+      this._paused = true;
+    },
+
+    resume() {
+      this._paused = false;
+    },
+
+    get isPaused() {
+      return this._paused;
+    },
+
+    setSpeed(multiplier) {
+      this._speed = multiplier;
+    },
+
+    getParameter(name) {
+      const param = this.parameters.get(name);
+      return param ? param.get() : undefined;
+    },
+
+    getCurrentState() {
+      return this.stateMachine?.currentState?.name || null;
     }
   };
 
@@ -545,6 +575,146 @@ export async function runAnimatorTests() {
     const idleTrans = parsed.stateMachine.states.idle.transitions;
     assertEqual(idleTrans[0].condition, 'mouthState > 0', 'First condition should survive');
     assertEqual(idleTrans[1].condition, 'eyeState > 2', 'Second condition should survive');
+  });
+
+  // ─────────────────────────────────────────────────────────────────
+  // pause / resume / isPaused
+  // ─────────────────────────────────────────────────────────────────
+  TestRunner.category('Animator - pause / resume / isPaused');
+
+  TestRunner.test('should start unpaused', () => {
+    const animator = createTestAnimator();
+    assertEqual(animator.isPaused, false, 'Should not be paused initially');
+  });
+
+  TestRunner.test('should pause and resume', () => {
+    const animator = createTestAnimator();
+    animator.pause();
+    assertEqual(animator.isPaused, true, 'Should be paused after pause()');
+
+    animator.resume();
+    assertEqual(animator.isPaused, false, 'Should not be paused after resume()');
+  });
+
+  TestRunner.test('should handle multiple pause calls', () => {
+    const animator = createTestAnimator();
+    animator.pause();
+    animator.pause();
+    assertEqual(animator.isPaused, true, 'Should still be paused');
+
+    animator.resume();
+    assertEqual(animator.isPaused, false, 'Should be unpaused after single resume');
+  });
+
+  // ─────────────────────────────────────────────────────────────────
+  // setSpeed
+  // ─────────────────────────────────────────────────────────────────
+  TestRunner.category('Animator - setSpeed');
+
+  TestRunner.test('should default speed to 1.0', () => {
+    const animator = createTestAnimator();
+    assertEqual(animator._speed, 1.0, 'Default speed should be 1.0');
+  });
+
+  TestRunner.test('should set speed multiplier', () => {
+    const animator = createTestAnimator();
+    animator.setSpeed(2.0);
+    assertEqual(animator._speed, 2.0, 'Speed should be 2.0');
+  });
+
+  TestRunner.test('should accept fractional speed', () => {
+    const animator = createTestAnimator();
+    animator.setSpeed(0.5);
+    assertEqual(animator._speed, 0.5, 'Speed should be 0.5');
+  });
+
+  TestRunner.test('should accept zero speed', () => {
+    const animator = createTestAnimator();
+    animator.setSpeed(0);
+    assertEqual(animator._speed, 0, 'Speed should be 0');
+  });
+
+  // ─────────────────────────────────────────────────────────────────
+  // getParameter
+  // ─────────────────────────────────────────────────────────────────
+  TestRunner.category('Animator - getParameter');
+
+  TestRunner.test('should return parameter value', () => {
+    const animator = createTestAnimator();
+    animator.setupDefaultParameters();
+    assertEqual(animator.getParameter('mouthState'), 0, 'mouthState should be 0');
+  });
+
+  TestRunner.test('should return updated parameter value', () => {
+    const animator = createTestAnimator();
+    animator.setupDefaultParameters();
+    animator.parameters.set('mouthState', 5);
+    assertEqual(animator.getParameter('mouthState'), 5, 'mouthState should be 5');
+  });
+
+  TestRunner.test('should return undefined for non-existent parameter', () => {
+    const animator = createTestAnimator();
+    animator.setupDefaultParameters();
+    assertEqual(animator.getParameter('nonexistent'), undefined, 'Should return undefined');
+  });
+
+  TestRunner.test('should return boolean parameter value', () => {
+    const animator = createTestAnimator();
+    animator.setupDefaultParameters();
+    assertEqual(animator.getParameter('isTalking'), false, 'isTalking should be false');
+    animator.parameters.set('isTalking', true);
+    assertEqual(animator.getParameter('isTalking'), true, 'isTalking should be true');
+  });
+
+  // ─────────────────────────────────────────────────────────────────
+  // getCurrentState
+  // ─────────────────────────────────────────────────────────────────
+  TestRunner.category('Animator - getCurrentState');
+
+  TestRunner.test('should return null when no state machine', () => {
+    const animator = createTestAnimator();
+    assertEqual(animator.getCurrentState(), null, 'Should return null');
+  });
+
+  TestRunner.test('should return current state name', () => {
+    const animator = createTestAnimator();
+    animator.setupDefaultParameters();
+    animator.setupStateMachine({
+      name: 'main',
+      states: {
+        idle: { animations: ['idle_anim'], transitions: [] },
+        walk: { animations: ['walk_anim'], transitions: [] }
+      },
+      entryState: 'idle'
+    });
+
+    assertEqual(animator.getCurrentState(), 'idle', 'Should return idle');
+  });
+
+  TestRunner.test('should reflect state changes', () => {
+    const animator = createTestAnimator();
+    animator.setupDefaultParameters();
+    animator.setupStateMachine({
+      name: 'main',
+      states: {
+        idle: {
+          animations: ['idle_anim'],
+          transitions: [
+            { condition: 'isTalking === true', targetState: 'talking' }
+          ]
+        },
+        talking: {
+          animations: ['talk_anim'],
+          transitions: []
+        }
+      },
+      entryState: 'idle'
+    });
+
+    assertEqual(animator.getCurrentState(), 'idle', 'Should start idle');
+    animator.parameters.set('isTalking', true);
+    animator.stateMachine.update(animator.parameters);
+    assertEqual(animator.getCurrentState(), 'talking', 'Should be talking after transition');
   });
 
   return TestRunner.summary();

@@ -9,6 +9,7 @@ export class Parameter {
   constructor(name, type, defaultValue = null) {
     this.name = name;
     this.type = type; // 'number', 'boolean', 'trigger'
+    this.defaultValue = defaultValue;
     this.value = defaultValue;
     this.listeners = [];
   }
@@ -98,6 +99,32 @@ export class ParameterSystem {
    */
   getByType(type) {
     return Array.from(this.parameters.values()).filter(p => p.type === type);
+  }
+
+  /**
+   * Check if a parameter exists
+   */
+  has(name) {
+    return this.parameters.has(name);
+  }
+
+  /**
+   * Reset all parameters to their default values
+   */
+  reset() {
+    this.parameters.forEach((param) => {
+      param.set(param.defaultValue);
+    });
+  }
+
+  /**
+   * Batch update: set multiple parameter values at once
+   * @param {Object} obj - { name: value, ... }
+   */
+  setMultiple(obj) {
+    Object.entries(obj).forEach(([name, value]) => {
+      this.set(name, value);
+    });
   }
 
   /**
