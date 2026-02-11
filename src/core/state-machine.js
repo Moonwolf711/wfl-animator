@@ -9,8 +9,8 @@ export class State {
     this.transitions = [];
   }
 
-  addTransition(condition, targetState) {
-    this.transitions.push({ condition, targetState });
+  addTransition(condition, targetState, conditionStr = null) {
+    this.transitions.push({ condition, targetState, conditionStr });
   }
 }
 
@@ -42,7 +42,7 @@ export class StateMachine {
   /**
    * Add a transition between states
    */
-  addTransition(fromStateName, toStateName, condition) {
+  addTransition(fromStateName, toStateName, condition, conditionStr = null) {
     const fromState = this.states.get(fromStateName);
     const toState = this.states.get(toStateName);
 
@@ -50,7 +50,7 @@ export class StateMachine {
       throw new Error(`State not found: ${fromStateName} or ${toStateName}`);
     }
 
-    fromState.addTransition(condition, toState);
+    fromState.addTransition(condition, toState, conditionStr);
   }
 
   /**
@@ -112,7 +112,7 @@ export class StateMachine {
         animations: state.animations,
         transitions: state.transitions.map(t => ({
           targetState: t.targetState.name,
-          condition: '[function]'
+          condition: t.conditionStr || '[function]'
         }))
       };
     });

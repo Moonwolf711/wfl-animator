@@ -219,6 +219,8 @@ export class WFLAnimator {
     // Load parameters from file
     if (this.file.parameters) {
       this.parameters.fromJSON(this.file.parameters);
+      // Re-attach listeners for any new parameters loaded from file
+      this.setupParameterListeners();
     }
 
     // Setup state machine from file
@@ -253,8 +255,9 @@ export class WFLAnimator {
     // Add transitions
     Object.entries(data.states).forEach(([name, stateData]) => {
       stateData.transitions.forEach(transition => {
-        const condition = this.createConditionFunction(transition.condition);
-        this.stateMachine.addTransition(name, transition.targetState, condition);
+        const conditionStr = transition.condition;
+        const condition = this.createConditionFunction(conditionStr);
+        this.stateMachine.addTransition(name, transition.targetState, condition, conditionStr);
       });
     });
 
@@ -283,7 +286,7 @@ export class WFLAnimator {
    * Supports: logical operators (&& ||)
    */
   createConditionFunction(conditionStr) {
-    if (!conditionStr || typeof conditionStr !== 'string') {
+    if (!conditionStr || typeof conditionStr !== 'string' || conditionStr === '[function]') {
       return () => false;
     }
 
@@ -530,16 +533,20 @@ export class WFLAnimator {
   renderSprites() {
     const ctx = this.context;
 
-    // Draw base character
+    // Calculate scale for base character (reused for overlays)
+    let scale = 1;
+    let baseX = 0;
+    let baseY = 0;
+
     if (this.characterSprite) {
-      const scale = Math.min(
+      scale = Math.min(
         this.canvas.width / this.characterSprite.width,
         this.canvas.height / this.characterSprite.height
       );
       const w = this.characterSprite.width * scale;
       const h = this.characterSprite.height * scale;
-      const x = (this.canvas.width - w) / 2;
-      const y = (this.canvas.height - h) / 2;
+      baseX = (this.canvas.width - w) / 2;
+      baseY = (this.canvas.height - h) / 2;
 
       // Apply head turn rotation
       const headTurn = this.parameters.get('headTurn')?.get() || 0;
@@ -548,25 +555,29 @@ export class WFLAnimator {
         ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
         ctx.rotate((headTurn * Math.PI) / 180);
         ctx.translate(-this.canvas.width / 2, -this.canvas.height / 2);
-        ctx.drawImage(this.characterSprite, x, y, w, h);
+        ctx.drawImage(this.characterSprite, baseX, baseY, w, h);
         ctx.restore();
       } else {
-        ctx.drawImage(this.characterSprite, x, y, w, h);
+        ctx.drawImage(this.characterSprite, baseX, baseY, w, h);
       }
     }
 
-    // Overlay mouth sprite
+    // Overlay mouth sprite (scaled and offset relative to base character)
     const mouthState = this.parameters.get('mouthState')?.get() || 0;
     if (this.mouthSprites[mouthState]) {
       const pos = this.spritePositions?.mouth || { x: 0, y: 0 };
-      ctx.drawImage(this.mouthSprites[mouthState], pos.x, pos.y);
+      const sprite = this.mouthSprites[mouthState];
+      ctx.drawImage(sprite, baseX + pos.x * scale, baseY + pos.y * scale,
+        sprite.width * scale, sprite.height * scale);
     }
 
-    // Overlay eye sprite
+    // Overlay eye sprite (scaled and offset relative to base character)
     const eyeState = this.parameters.get('eyeState')?.get() || 0;
     if (this.eyeSprites[eyeState]) {
       const pos = this.spritePositions?.eyes || { x: 0, y: 0 };
-      ctx.drawImage(this.eyeSprites[eyeState], pos.x, pos.y);
+      const sprite = this.eyeSprites[eyeState];
+      ctx.drawImage(sprite, baseX + pos.x * scale, baseY + pos.y * scale,
+        sprite.width * scale, sprite.height * scale);
     }
   }
 
