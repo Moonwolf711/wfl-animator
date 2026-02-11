@@ -11,6 +11,9 @@ import { runStateMachineTests } from './state-machine-tests.js';
 import { runAnimatorTests } from './animator-tests.js';
 import { runFileFormatTests } from './file-format-tests.js';
 import { runRiggingTests } from './rigging-tests.js';
+import { runEventBusTests } from './event-bus-tests.js';
+import { runSessionStoreTests } from './session-store-tests.js';
+import { runStreamingTests } from './streaming-tests.js';
 
 async function runAll() {
   console.log('WFL Animator - Full Test Suite');
@@ -50,16 +53,37 @@ async function runAll() {
   totalPassed += rigResult.passed;
   totalFailed += rigResult.failed;
 
+  // ── Event Bus Tests ────────────────────────────────────────────────
+  TestRunner.reset();
+  const ebResult = await runEventBusTests();
+  totalPassed += ebResult.passed;
+  totalFailed += ebResult.failed;
+
+  // ── Session Store Tests ────────────────────────────────────────────
+  TestRunner.reset();
+  const ssResult = await runSessionStoreTests();
+  totalPassed += ssResult.passed;
+  totalFailed += ssResult.failed;
+
+  // ── Streaming Tests ────────────────────────────────────────────────
+  TestRunner.reset();
+  const strResult = await runStreamingTests();
+  totalPassed += strResult.passed;
+  totalFailed += strResult.failed;
+
   // ── Grand Total ──────────────────────────────────────────────────
   const grandTotal = totalPassed + totalFailed;
   console.log('===================================================');
   console.log('GRAND TOTAL');
   console.log('===================================================');
-  console.log(`  Parameter tests:     ${paramResult.passed}/${paramResult.total} passed`);
-  console.log(`  State Machine tests: ${smResult.passed}/${smResult.total} passed`);
-  console.log(`  Animator tests:      ${animResult.passed}/${animResult.total} passed`);
-  console.log(`  File Format tests:   ${ffResult.passed}/${ffResult.total} passed`);
-  console.log(`  Rigging tests:       ${rigResult.passed}/${rigResult.total} passed`);
+  console.log(`  Parameter tests:      ${paramResult.passed}/${paramResult.total} passed`);
+  console.log(`  State Machine tests:  ${smResult.passed}/${smResult.total} passed`);
+  console.log(`  Animator tests:       ${animResult.passed}/${animResult.total} passed`);
+  console.log(`  File Format tests:    ${ffResult.passed}/${ffResult.total} passed`);
+  console.log(`  Rigging tests:        ${rigResult.passed}/${rigResult.total} passed`);
+  console.log(`  Event Bus tests:      ${ebResult.passed}/${ebResult.total} passed`);
+  console.log(`  Session Store tests:  ${ssResult.passed}/${ssResult.total} passed`);
+  console.log(`  Streaming tests:      ${strResult.passed}/${strResult.total} passed`);
   console.log('---------------------------------------------------');
   console.log(`  TOTAL:               ${totalPassed}/${grandTotal} passed (${Math.round(totalPassed / grandTotal * 100)}%)`);
   console.log('===================================================\n');
