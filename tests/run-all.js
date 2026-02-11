@@ -10,6 +10,7 @@ import { runParameterTests } from './parameter-tests.js';
 import { runStateMachineTests } from './state-machine-tests.js';
 import { runAnimatorTests } from './animator-tests.js';
 import { runFileFormatTests } from './file-format-tests.js';
+import { runRiggingTests } from './rigging-tests.js';
 
 async function runAll() {
   console.log('WFL Animator - Full Test Suite');
@@ -43,6 +44,12 @@ async function runAll() {
   totalPassed += ffResult.passed;
   totalFailed += ffResult.failed;
 
+  // ── Rigging Tests ─────────────────────────────────────────────────
+  TestRunner.reset();
+  const rigResult = await runRiggingTests();
+  totalPassed += rigResult.passed;
+  totalFailed += rigResult.failed;
+
   // ── Grand Total ──────────────────────────────────────────────────
   const grandTotal = totalPassed + totalFailed;
   console.log('===================================================');
@@ -52,6 +59,7 @@ async function runAll() {
   console.log(`  State Machine tests: ${smResult.passed}/${smResult.total} passed`);
   console.log(`  Animator tests:      ${animResult.passed}/${animResult.total} passed`);
   console.log(`  File Format tests:   ${ffResult.passed}/${ffResult.total} passed`);
+  console.log(`  Rigging tests:       ${rigResult.passed}/${rigResult.total} passed`);
   console.log('---------------------------------------------------');
   console.log(`  TOTAL:               ${totalPassed}/${grandTotal} passed (${Math.round(totalPassed / grandTotal * 100)}%)`);
   console.log('===================================================\n');
