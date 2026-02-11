@@ -46,7 +46,6 @@ export class StreamingState {
   pushUpdate(streamId, delta) {
     const stream = this.activeStreams.get(streamId);
     if (!stream || stream.status !== 'active') {
-      console.warn(`Stream ${streamId} not found or inactive`);
       return;
     }
 
@@ -145,8 +144,8 @@ export class StreamingState {
    */
   mergeState(target, source) {
     const result = { ...target };
-    for (const key in source) {
-      if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+    for (const key of Object.keys(source)) {
+      if (source[key] !== null && typeof source[key] === 'object' && !Array.isArray(source[key])) {
         result[key] = this.mergeState(result[key] || {}, source[key]);
       } else {
         result[key] = source[key];
@@ -319,6 +318,3 @@ export class StreamingAnimationLoader {
     `;
   }
 }
-
-// Singleton instance
-export const globalStreamingState = new StreamingState();

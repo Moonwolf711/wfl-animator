@@ -1,6 +1,6 @@
 /**
  * WFL File Format - JSON-based animation file format
- * 
+ *
  * Format:
  * {
  *   "version": 1,
@@ -55,6 +55,9 @@ export class WFLFile {
    */
   static async load(url) {
     const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to load ${url}: HTTP ${response.status} ${response.statusText}`);
+    }
     const json = await response.json();
     return WFLFile.fromJSON(json);
   }
@@ -65,12 +68,12 @@ export class WFLFile {
   download(filename = 'animation.wfl') {
     const json = this.toJSON();
     const blob = new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
+    const blobUrl = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
+    a.href = blobUrl;
     a.download = filename;
     a.click();
-    URL.revokeObjectURL(url);
+    URL.revokeObjectURL(blobUrl);
   }
 }
 
@@ -81,7 +84,7 @@ export class WFLBinaryFormat {
   /**
    * Encode to binary
    */
-  static encode(file) {
+  static encode(_file) {
     // TODO: Implement binary encoding
     // Use what we learned from Rive:
     // - LEB128 for integers
@@ -93,9 +96,8 @@ export class WFLBinaryFormat {
   /**
    * Decode from binary
    */
-  static decode(buffer) {
+  static decode(_buffer) {
     // TODO: Implement binary decoding
     throw new Error('Binary format not yet implemented');
   }
 }
-

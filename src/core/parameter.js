@@ -3,6 +3,8 @@
  * Inspired by Rive's state machine inputs
  */
 
+const VALID_TYPES = ['number', 'boolean', 'trigger'];
+
 export class Parameter {
   constructor(name, type, defaultValue = null) {
     this.name = name;
@@ -12,9 +14,13 @@ export class Parameter {
   }
 
   set(value) {
+    if (!this.validateType(value)) {
+      throw new TypeError(`Invalid value for ${this.type} parameter "${this.name}": ${typeof value}`);
+    }
+
     const oldValue = this.value;
     this.value = value;
-    
+
     // Notify listeners
     this.listeners.forEach(listener => {
       listener(this.name, value, oldValue);
@@ -32,6 +38,16 @@ export class Parameter {
       if (index > -1) this.listeners.splice(index, 1);
     };
   }
+
+  validateType(value) {
+    if (value === null) return true;
+    switch (this.type) {
+      case 'number': return typeof value === 'number';
+      case 'boolean': return typeof value === 'boolean';
+      case 'trigger': return typeof value === 'boolean';
+      default: return true;
+    }
+  }
 }
 
 export class ParameterSystem {
@@ -43,6 +59,9 @@ export class ParameterSystem {
    * Register a parameter
    */
   register(name, type, defaultValue = null) {
+    if (!VALID_TYPES.includes(type)) {
+      throw new Error(`Invalid parameter type: ${type}. Must be one of: ${VALID_TYPES.join(', ')}`);
+    }
     const param = new Parameter(name, type, defaultValue);
     this.parameters.set(name, param);
     return param;
@@ -100,11 +119,7 @@ export class ParameterSystem {
    */
   fromJSON(data) {
     Object.entries(data).forEach(([name, config]) => {
-      const param = this.register(name, config.type, config.value);
-      if (config.value !== null) {
-        param.set(config.value);
-      }
+      this.register(name, config.type, config.value);
     });
   }
 }
-

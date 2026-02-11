@@ -1,6 +1,6 @@
 /**
  * DragonBones Integration - Wrapper for bone rigging
- * 
+ *
  * This integrates with DragonBones runtime for bone transformations.
  * You can extract the bone rigging code from DragonBones source.
  */
@@ -103,10 +103,7 @@ export class DragonBonesRigging {
    */
   update(deltaTime) {
     if (!this.armature) return;
-    // DragonBones handles its own update, but you can add custom logic here
-    if (this.armatureDisplay && this.armatureDisplay.armature) {
-      this.armatureDisplay.armature.advanceTime(deltaTime);
-    }
+    this.armature.advanceTime(deltaTime);
   }
 
   /**
@@ -136,4 +133,3 @@ export class DragonBonesRigging {
     }
   }
 }
-

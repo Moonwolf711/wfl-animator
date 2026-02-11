@@ -8,6 +8,7 @@ export class EventBus {
     this.listeners = new Map();
     this.history = [];
     this.maxHistory = 100;
+    this.onError = null;
   }
 
   /**
@@ -74,7 +75,7 @@ export class EventBus {
         try {
           callback(timestampedEvent);
         } catch (error) {
-          console.error(`Error in event listener for ${event.type}:`, error);
+          this.handleListenerError(event.type, error);
         }
       });
     }
@@ -86,9 +87,18 @@ export class EventBus {
         try {
           callback(timestampedEvent);
         } catch (error) {
-          console.error(`Error in wildcard listener:`, error);
+          this.handleListenerError('*', error);
         }
       });
+    }
+  }
+
+  /**
+   * Handle listener errors via callback or emit error event
+   */
+  handleListenerError(eventType, error) {
+    if (this.onError) {
+      this.onError(eventType, error);
     }
   }
 

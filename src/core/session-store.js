@@ -17,6 +17,7 @@ export class SessionStore {
     this.sessions = new Map();
     this.messages = new Map(); // In-memory message storage
     this.initialized = false;
+    this._initPromise = null;
   }
 
   /**
@@ -25,9 +26,20 @@ export class SessionStore {
   async init() {
     if (this.initialized) return;
 
+    // Prevent race condition on concurrent init() calls
+    if (this._initPromise) return this._initPromise;
+
+    this._initPromise = this._doInit();
+    try {
+      await this._initPromise;
+    } finally {
+      this._initPromise = null;
+    }
+  }
+
+  async _doInit() {
     return new Promise((resolve, reject) => {
       if (typeof indexedDB === 'undefined') {
-        console.warn('IndexedDB not available, using in-memory storage');
         this.initialized = true;
         resolve();
         return;
@@ -40,7 +52,7 @@ export class SessionStore {
       request.onsuccess = () => {
         this.db = request.result;
         this.initialized = true;
-        this.loadSessions().then(resolve);
+        this.loadSessions().then(resolve).catch(reject);
       };
 
       request.onupgradeneeded = (event) => {
@@ -150,6 +162,9 @@ export class SessionStore {
     if (!session) return false;
 
     this.sessions.delete(id);
+
+    // Always clean up in-memory messages
+    this.messages.delete(id);
 
     if (this.db) {
       await this.deleteFromStore(SESSIONS_STORE, id);
@@ -288,10 +303,17 @@ export class SessionStore {
   async loadSessions() {
     if (!this.db) return;
 
-    const sessions = await this.getAllFromStore(SESSIONS_STORE);
-    sessions.forEach(session => {
-      this.sessions.set(session.id, session);
-    });
+    try {
+      const sessions = await this.getAllFromStore(SESSIONS_STORE);
+      sessions.forEach(session => {
+        this.sessions.set(session.id, session);
+      });
+    } catch (error) {
+      this.eventBus.emit({
+        type: EventTypes.ERROR,
+        payload: { message: `Failed to load sessions: ${error.message}`, error }
+      });
+    }
   }
 
   /**
@@ -393,7 +415,7 @@ export class SessionStore {
    * Generate unique ID
    */
   generateId() {
-    return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
   }
 
   /**

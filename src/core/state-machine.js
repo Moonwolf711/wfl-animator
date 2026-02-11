@@ -14,14 +14,6 @@ export class State {
   }
 }
 
-export class Transition {
-  constructor(fromState, toState, condition) {
-    this.fromState = fromState;
-    this.toState = toState;
-    this.condition = condition; // Function that returns true when transition should occur
-  }
-}
-
 export class StateMachine {
   constructor(name) {
     this.name = name;
@@ -37,13 +29,13 @@ export class StateMachine {
   addState(name, animations = []) {
     const state = new State(name, animations);
     this.states.set(name, state);
-    
+
     // Set as entry state if it's the first one
     if (!this.entryState) {
       this.entryState = state;
       this.currentState = state;
     }
-    
+
     return state;
   }
 
@@ -53,11 +45,11 @@ export class StateMachine {
   addTransition(fromStateName, toStateName, condition) {
     const fromState = this.states.get(fromStateName);
     const toState = this.states.get(toStateName);
-    
+
     if (!fromState || !toState) {
       throw new Error(`State not found: ${fromStateName} or ${toStateName}`);
     }
-    
+
     fromState.addTransition(condition, toState);
   }
 
@@ -79,16 +71,16 @@ export class StateMachine {
   /**
    * Set the current state
    */
-  setState(state) {
-    if (typeof state === 'string') {
-      state = this.states.get(state);
-    }
-    
+  setState(stateOrName) {
+    const state = typeof stateOrName === 'string'
+      ? this.states.get(stateOrName)
+      : stateOrName;
+
     if (!state) return;
-    
+
     const oldState = this.currentState;
     this.currentState = state;
-    
+
     if (this.onStateChange) {
       this.onStateChange(state.name, oldState?.name);
     }
@@ -120,11 +112,11 @@ export class StateMachine {
         animations: state.animations,
         transitions: state.transitions.map(t => ({
           targetState: t.targetState.name,
-          condition: t.condition.toString() // Note: Functions are serialized as strings
+          condition: '[function]'
         }))
       };
     });
-    
+
     return {
       name: this.name,
       states,
@@ -133,4 +125,3 @@ export class StateMachine {
     };
   }
 }
-

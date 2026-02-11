@@ -6,7 +6,9 @@
   "main": "src/animator.js",
   "scripts": {
     "dev": "python3 -m http.server 8000",
-    "build": "echo 'Build script to be implemented'"
+    "build": "echo 'Build script to be implemented'",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix"
   },
   "keywords": [
     "animation",
@@ -15,6 +17,8 @@
     "state-machine"
   ],
   "author": "WFL",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "eslint": "^10.0.0"
+  }
 }
-

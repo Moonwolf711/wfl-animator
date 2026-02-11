@@ -38,7 +38,7 @@ export class PermissionManager {
     }
 
     // Create permission request
-    const requestId = `perm-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const requestId = `perm-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 
     return new Promise((resolve) => {
       const request = {
@@ -82,7 +82,6 @@ export class PermissionManager {
   respondToPermission(requestId, result) {
     const request = this.pendingRequests.get(requestId);
     if (!request) {
-      console.warn(`Permission request ${requestId} not found`);
       return;
     }
 
@@ -159,7 +158,7 @@ export class PermissionManager {
    * Cancel all pending requests
    */
   cancelAll() {
-    this.pendingRequests.forEach((request, requestId) => {
+    this.pendingRequests.forEach((_request, requestId) => {
       this.respondToPermission(requestId, {
         behavior: 'deny',
         message: 'All permissions cancelled'
@@ -167,12 +166,6 @@ export class PermissionManager {
     });
   }
 }
-
-// Permission result type
-export const PermissionBehavior = {
-  ALLOW: 'allow',
-  DENY: 'deny'
-};
 
 // Action types requiring permission
 export const PermissionActions = {
@@ -192,14 +185,15 @@ export class PermissionDialog {
   constructor(eventBus = globalEventBus) {
     this.eventBus = eventBus;
     this.container = null;
-    this.setupListener();
+    this.abortController = null;
+    this.unsubscribe = this.setupListener();
   }
 
   /**
    * Setup event listener for permission requests
    */
   setupListener() {
-    this.eventBus.on(EventTypes.PERMISSION_REQUEST, (event) => {
+    return this.eventBus.on(EventTypes.PERMISSION_REQUEST, (event) => {
       this.showDialog(event.payload);
     });
   }
@@ -213,17 +207,20 @@ export class PermissionDialog {
     // Remove existing dialog
     this.hideDialog();
 
+    this.abortController = new AbortController();
+    const { signal } = this.abortController;
+
     this.container = document.createElement('div');
     this.container.className = 'wfl-permission-overlay';
     this.container.innerHTML = `
       <div class="wfl-permission-dialog">
         <div class="wfl-permission-header">
-          <span class="wfl-permission-icon">⚠️</span>
+          <span class="wfl-permission-icon">&#9888;</span>
           <span class="wfl-permission-title">Confirm Action</span>
         </div>
         <div class="wfl-permission-message">${this.escapeHtml(request.message)}</div>
         <div class="wfl-permission-details">
-          <code>${request.actionType}</code>
+          <code>${this.escapeHtml(request.actionType)}</code>
         </div>
         <div class="wfl-permission-actions">
           <button class="wfl-btn wfl-btn--deny" data-action="deny">Cancel</button>
@@ -232,7 +229,7 @@ export class PermissionDialog {
       </div>
     `;
 
-    // Add event listeners
+    // Add event listeners with AbortController for cleanup
     this.container.querySelector('[data-action="allow"]').addEventListener('click', () => {
       this.eventBus.emit({
         type: EventTypes.PERMISSION_RESPONSE,
@@ -242,7 +239,7 @@ export class PermissionDialog {
         }
       });
       this.hideDialog();
-    });
+    }, { signal });
 
     this.container.querySelector('[data-action="deny"]').addEventListener('click', () => {
       this.eventBus.emit({
@@ -253,7 +250,7 @@ export class PermissionDialog {
         }
       });
       this.hideDialog();
-    });
+    }, { signal });
 
     // Close on overlay click
     this.container.addEventListener('click', (e) => {
@@ -267,7 +264,7 @@ export class PermissionDialog {
         });
         this.hideDialog();
       }
-    });
+    }, { signal });
 
     document.body.appendChild(this.container);
   }
@@ -276,10 +273,25 @@ export class PermissionDialog {
    * Hide permission dialog
    */
   hideDialog() {
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
+    }
     if (this.container && this.container.parentNode) {
       this.container.parentNode.removeChild(this.container);
     }
     this.container = null;
+  }
+
+  /**
+   * Dispose of dialog and event listeners
+   */
+  dispose() {
+    this.hideDialog();
+    if (this.unsubscribe) {
+      this.unsubscribe();
+      this.unsubscribe = null;
+    }
   }
 
   /**

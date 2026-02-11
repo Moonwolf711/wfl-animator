@@ -8,10 +8,10 @@ import { ParameterSystem } from './core/parameter.js';
 import { StateMachine } from './core/state-machine.js';
 import { WFLFile } from './core/file-format.js';
 import { DragonBonesRigging } from './rigging/dragon-bones.js';
-import { EventBus, EventTypes, globalEventBus } from './core/event-bus.js';
+import { EventTypes, globalEventBus } from './core/event-bus.js';
 import { StreamingState, StreamingAnimationLoader } from './core/streaming.js';
-import { PermissionManager, PermissionDialog, PermissionActions, globalPermissionManager } from './core/permission.js';
-import { SessionStore, globalSessionStore } from './core/session-store.js';
+import { PermissionDialog, PermissionActions, globalPermissionManager } from './core/permission.js';
+import { globalSessionStore } from './core/session-store.js';
 
 export class WFLAnimator {
   constructor(options = {}) {
@@ -148,14 +148,9 @@ export class WFLAnimator {
       this.permissions.respondToPermission(requestId, result);
     });
 
-    // Listen for streaming updates
-    this.eventBus.on(EventTypes.STREAM_UPDATE, (event) => {
-      // Could update UI loading indicator here
-    });
-
     // Listen for session events
     this.eventBus.on(EventTypes.SESSION_LOAD, async (event) => {
-      const { sessionId, snapshot } = event.payload;
+      const { snapshot } = event.payload;
       if (snapshot) {
         await this.restoreFromSnapshot(snapshot);
       }
@@ -189,10 +184,18 @@ export class WFLAnimator {
     const useStreaming = options.streaming !== false;
     const target = options.loadingTarget || this.canvas;
 
-    if (useStreaming) {
-      this.file = await this.streamingLoader.loadWithStreaming(url, { target });
-    } else {
-      this.file = await WFLFile.load(url);
+    try {
+      if (useStreaming) {
+        this.file = await this.streamingLoader.loadWithStreaming(url, { target });
+      } else {
+        this.file = await WFLFile.load(url);
+      }
+    } catch (error) {
+      this.eventBus.emit({
+        type: EventTypes.ERROR,
+        payload: { message: `Failed to load animation: ${error.message}`, error }
+      });
+      throw error;
     }
 
     // Load parameters from file
@@ -254,8 +257,8 @@ export class WFLAnimator {
   /**
    * Create condition function from string
    */
-  createConditionFunction(conditionStr) {
-    return (parameters) => {
+  createConditionFunction(_conditionStr) {
+    return (_parameters) => {
       // TODO: Implement proper condition parsing
       return false;
     };
@@ -275,6 +278,13 @@ export class WFLAnimator {
    */
   startAnimationLoop() {
     const animate = (currentTime) => {
+      // Guard first frame where lastTime is 0
+      if (this.lastTime === 0) {
+        this.lastTime = currentTime;
+        this.animationFrame = requestAnimationFrame(animate);
+        return;
+      }
+
       const deltaTime = (currentTime - this.lastTime) / 1000;
       this.lastTime = currentTime;
 
@@ -355,7 +365,7 @@ export class WFLAnimator {
     ctx.textAlign = 'left';
 
     const progress = state.progress ? `${Math.round(state.progress * 100)}%` : 'Loading...';
-    ctx.fillText(`⏳ ${progress}`, 20, 30);
+    ctx.fillText(`Loading ${progress}`, 20, 30);
   }
 
   // ─────────────────────────────────────────────────────────────────
@@ -552,17 +562,8 @@ export class WFLAnimator {
   }
 }
 
-// Export all modules for direct access
-export {
-  EventBus,
-  EventTypes,
-  StreamingState,
-  StreamingAnimationLoader,
-  PermissionManager,
-  PermissionDialog,
-  PermissionActions,
-  SessionStore,
-  globalEventBus,
-  globalPermissionManager,
-  globalSessionStore
-};
+// Re-export modules for direct access
+export { EventBus, EventTypes, globalEventBus } from './core/event-bus.js';
+export { StreamingState, StreamingAnimationLoader } from './core/streaming.js';
+export { PermissionManager, PermissionDialog, PermissionActions, globalPermissionManager } from './core/permission.js';
+export { SessionStore, globalSessionStore } from './core/session-store.js';
