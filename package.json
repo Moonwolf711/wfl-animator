@@ -8,7 +8,8 @@
     "dev": "python3 -m http.server 8000",
     "build": "echo 'Build script to be implemented'",
     "lint": "eslint src/",
-    "lint:fix": "eslint src/ --fix"
+    "lint:fix": "eslint src/ --fix",
+    "test": "node --experimental-vm-modules tests/run-all.js"
   },
   "keywords": [
     "animation",
