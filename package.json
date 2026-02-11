@@ -4,6 +4,7 @@
   "description": "Custom animation system for WFL",
   "type": "module",
   "main": "src/animator.js",
+  "types": "types/index.d.ts",
   "scripts": {
     "dev": "python3 -m http.server 8000",
     "build": "node scripts/build.js",
@@ -20,6 +21,7 @@
   "author": "WFL",
   "license": "MIT",
   "devDependencies": {
-    "eslint": "^10.0.0"
+    "eslint": "^10.0.0",
+    "typescript": "^5.9.3"
   }
 }
