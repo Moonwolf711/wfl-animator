@@ -1,9 +1,10 @@
 {
   "version": 1,
   "metadata": {
-    "name": "Cockpit Character",
-    "author": "WFL",
-    "description": "Example WFL character file"
+    "name": "Demo Character",
+    "version": "1.0.0",
+    "author": "WFL Team",
+    "description": "A simple stick-figure character demonstrating the WFL bone animation system with idle and talking states."
   },
   "parameters": {
     "mouthState": {
@@ -32,16 +33,16 @@
       "value": 0,
       "min": 0,
       "max": 3,
-      "description": "Expression intensity"
+      "description": "Expression intensity (0=neutral, 1=mild, 2=medium, 3=spicy)"
     },
     "isTalking": {
       "type": "boolean",
       "value": false,
-      "description": "Talking animation trigger"
+      "description": "Whether the character is currently talking"
     }
   },
   "stateMachine": {
-    "name": "CockpitSM",
+    "name": "CharacterSM",
     "states": {
       "idle": {
         "animations": ["idle"],
@@ -53,7 +54,7 @@
         ]
       },
       "talking": {
-        "animations": ["talk_loop"],
+        "animations": ["talking"],
         "transitions": [
           {
             "targetState": "idle",
@@ -65,72 +66,142 @@
     "entryState": "idle"
   },
   "animations": {
-    "mouth_closed": {
-      "type": "bone_animation",
-      "duration": 0.1
-    },
-    "mouth_a": {
-      "type": "bone_animation",
-      "duration": 0.1
-    },
-    "mouth_e": {
-      "type": "bone_animation",
-      "duration": 0.1
-    },
-    "mouth_i": {
-      "type": "bone_animation",
-      "duration": 0.1
-    },
-    "mouth_o": {
-      "type": "bone_animation",
-      "duration": 0.1
-    },
-    "mouth_u": {
-      "type": "bone_animation",
-      "duration": 0.1
-    },
-    "mouth_f": {
-      "type": "bone_animation",
-      "duration": 0.1
-    },
-    "eyes_open": {
-      "type": "bone_animation",
-      "duration": 0.2
-    },
-    "eyes_closed": {
-      "type": "bone_animation",
-      "duration": 0.2
-    },
-    "eyes_half": {
-      "type": "bone_animation",
-      "duration": 0.2
-    },
-    "eyes_squint": {
-      "type": "bone_animation",
-      "duration": 0.2
-    },
-    "eyes_wide": {
-      "type": "bone_animation",
-      "duration": 0.2
-    },
-    "talking": {
-      "type": "bone_animation",
-      "duration": 1.0,
-      "loop": true
-    },
     "idle": {
       "type": "bone_animation",
       "duration": 2.0,
       "loop": true
-    }
+    },
+    "talking": {
+      "type": "bone_animation",
+      "duration": 0.6,
+      "loop": true
+    },
+    "mouth_closed": { "type": "bone_animation", "duration": 0.1 },
+    "mouth_a": { "type": "bone_animation", "duration": 0.1 },
+    "mouth_e": { "type": "bone_animation", "duration": 0.1 },
+    "mouth_i": { "type": "bone_animation", "duration": 0.1 },
+    "mouth_o": { "type": "bone_animation", "duration": 0.1 },
+    "mouth_u": { "type": "bone_animation", "duration": 0.1 },
+    "mouth_f": { "type": "bone_animation", "duration": 0.1 },
+    "eyes_open": { "type": "bone_animation", "duration": 0.2 },
+    "eyes_closed": { "type": "bone_animation", "duration": 0.2 },
+    "eyes_half": { "type": "bone_animation", "duration": 0.2 },
+    "eyes_squint": { "type": "bone_animation", "duration": 0.2 },
+    "eyes_wide": { "type": "bone_animation", "duration": 0.2 }
   },
   "bones": {
     "skeleton": {
-      "note": "DragonBones skeleton data goes here"
+      "name": "character",
+      "bones": [
+        { "name": "root",      "x": 0, "y": 0,    "rotation": 0, "length": 10 },
+        { "name": "body",      "parent": "root",   "x": 0, "y": -60,  "rotation": 0, "length": 80 },
+        { "name": "head",      "parent": "body",   "x": 0, "y": -90,  "rotation": 0, "length": 40 },
+        { "name": "jaw",       "parent": "head",   "x": 0, "y": -15,  "rotation": 0, "length": 15 },
+        { "name": "arm_left",  "parent": "body",   "x": -20, "y": -70, "rotation": 0.5, "length": 60 },
+        { "name": "arm_right", "parent": "body",   "x": 20,  "y": -70, "rotation": -0.5, "length": 60 },
+        { "name": "leg_left",  "parent": "root",   "x": -12, "y": 0,   "rotation": 0.15, "length": 70 },
+        { "name": "leg_right", "parent": "root",   "x": 12,  "y": 0,   "rotation": -0.15, "length": 70 }
+      ],
+      "animations": {
+        "idle": {
+          "duration": 2.0,
+          "tracks": [
+            {
+              "boneName": "body",
+              "keyframes": [
+                { "time": 0.0, "position": { "x": 0, "y": -60 }, "rotation": 0 },
+                { "time": 0.5, "position": { "x": 0, "y": -62 }, "rotation": 0.02 },
+                { "time": 1.0, "position": { "x": 0, "y": -60 }, "rotation": 0 },
+                { "time": 1.5, "position": { "x": 0, "y": -62 }, "rotation": -0.02 },
+                { "time": 2.0, "position": { "x": 0, "y": -60 }, "rotation": 0 }
+              ]
+            },
+            {
+              "boneName": "head",
+              "keyframes": [
+                { "time": 0.0, "rotation": 0 },
+                { "time": 0.7, "rotation": 0.03 },
+                { "time": 1.4, "rotation": -0.03 },
+                { "time": 2.0, "rotation": 0 }
+              ]
+            },
+            {
+              "boneName": "arm_left",
+              "keyframes": [
+                { "time": 0.0, "rotation": 0.5 },
+                { "time": 1.0, "rotation": 0.55 },
+                { "time": 2.0, "rotation": 0.5 }
+              ]
+            },
+            {
+              "boneName": "arm_right",
+              "keyframes": [
+                { "time": 0.0, "rotation": -0.5 },
+                { "time": 1.0, "rotation": -0.55 },
+                { "time": 2.0, "rotation": -0.5 }
+              ]
+            }
+          ]
+        },
+        "talking": {
+          "duration": 0.6,
+          "tracks": [
+            {
+              "boneName": "head",
+              "keyframes": [
+                { "time": 0.0, "rotation": 0 },
+                { "time": 0.1, "rotation": -0.06 },
+                { "time": 0.2, "rotation": 0.04 },
+                { "time": 0.35, "rotation": -0.05 },
+                { "time": 0.5, "rotation": 0.03 },
+                { "time": 0.6, "rotation": 0 }
+              ]
+            },
+            {
+              "boneName": "jaw",
+              "keyframes": [
+                { "time": 0.0, "rotation": 0 },
+                { "time": 0.08, "rotation": 0.15 },
+                { "time": 0.18, "rotation": 0.02 },
+                { "time": 0.28, "rotation": 0.18 },
+                { "time": 0.38, "rotation": 0.04 },
+                { "time": 0.48, "rotation": 0.12 },
+                { "time": 0.6, "rotation": 0 }
+              ]
+            },
+            {
+              "boneName": "body",
+              "keyframes": [
+                { "time": 0.0, "position": { "x": 0, "y": -60 }, "rotation": 0 },
+                { "time": 0.15, "position": { "x": 0, "y": -61 }, "rotation": 0.015 },
+                { "time": 0.3, "position": { "x": 0, "y": -60 }, "rotation": -0.01 },
+                { "time": 0.45, "position": { "x": 0, "y": -61 }, "rotation": 0.01 },
+                { "time": 0.6, "position": { "x": 0, "y": -60 }, "rotation": 0 }
+              ]
+            },
+            {
+              "boneName": "arm_left",
+              "keyframes": [
+                { "time": 0.0, "rotation": 0.5 },
+                { "time": 0.15, "rotation": 0.6 },
+                { "time": 0.3, "rotation": 0.45 },
+                { "time": 0.45, "rotation": 0.58 },
+                { "time": 0.6, "rotation": 0.5 }
+              ]
+            },
+            {
+              "boneName": "arm_right",
+              "keyframes": [
+                { "time": 0.0, "rotation": -0.5 },
+                { "time": 0.2, "rotation": -0.58 },
+                { "time": 0.4, "rotation": -0.45 },
+                { "time": 0.6, "rotation": -0.5 }
+              ]
+            }
+          ]
+        }
+      }
     },
-    "textures": {
-      "note": "DragonBones texture atlas data goes here"
-    }
+    "textures": null
   }
 }
-
