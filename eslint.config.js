@@ -25,6 +25,8 @@ export default [
         Image: 'readonly',
         Function: 'readonly',
         console: 'readonly',
+        AudioContext: 'readonly',
+        webkitAudioContext: 'readonly',
       }
     },
     rules: {

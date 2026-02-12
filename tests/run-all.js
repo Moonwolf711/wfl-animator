@@ -14,6 +14,7 @@ import { runRiggingTests } from './rigging-tests.js';
 import { runEventBusTests } from './event-bus-tests.js';
 import { runSessionStoreTests } from './session-store-tests.js';
 import { runStreamingTests } from './streaming-tests.js';
+import { runAudioSyncTests } from './audio-sync-tests.js';
 
 async function runAll() {
   console.log('WFL Animator - Full Test Suite');
@@ -71,6 +72,12 @@ async function runAll() {
   totalPassed += strResult.passed;
   totalFailed += strResult.failed;
 
+  // ── Audio Sync Tests ──────────────────────────────────────────────
+  TestRunner.reset();
+  const audioResult = await runAudioSyncTests();
+  totalPassed += audioResult.passed;
+  totalFailed += audioResult.failed;
+
   // ── Grand Total ──────────────────────────────────────────────────
   const grandTotal = totalPassed + totalFailed;
   console.log('===================================================');
@@ -84,6 +91,7 @@ async function runAll() {
   console.log(`  Event Bus tests:      ${ebResult.passed}/${ebResult.total} passed`);
   console.log(`  Session Store tests:  ${ssResult.passed}/${ssResult.total} passed`);
   console.log(`  Streaming tests:      ${strResult.passed}/${strResult.total} passed`);
+  console.log(`  Audio Sync tests:     ${audioResult.passed}/${audioResult.total} passed`);
   console.log('---------------------------------------------------');
   console.log(`  TOTAL:               ${totalPassed}/${grandTotal} passed (${Math.round(totalPassed / grandTotal * 100)}%)`);
   console.log('===================================================\n');

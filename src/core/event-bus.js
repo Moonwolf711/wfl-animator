@@ -173,6 +173,13 @@ export const EventTypes = {
   PERMISSION_REQUEST: 'permission.request',
   PERMISSION_RESPONSE: 'permission.response',
 
+  // Audio events
+  AUDIO_PLAY: 'audio.play',
+  AUDIO_PAUSE: 'audio.pause',
+  AUDIO_STOP: 'audio.stop',
+  AUDIO_MARKER: 'audio.marker',
+  AUDIO_VISEME_CHANGE: 'audio.viseme.change',
+
   // Error events
   ERROR: 'error',
   WARNING: 'warning'

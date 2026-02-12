@@ -74,6 +74,13 @@ export declare const EventTypes: {
   readonly PERMISSION_REQUEST: 'permission.request';
   readonly PERMISSION_RESPONSE: 'permission.response';
 
+  // Audio events
+  readonly AUDIO_PLAY: 'audio.play';
+  readonly AUDIO_PAUSE: 'audio.pause';
+  readonly AUDIO_STOP: 'audio.stop';
+  readonly AUDIO_MARKER: 'audio.marker';
+  readonly AUDIO_VISEME_CHANGE: 'audio.viseme.change';
+
   // Error events
   readonly ERROR: 'error';
   readonly WARNING: 'warning';
@@ -1341,6 +1348,164 @@ export declare class PermissionDialog {
 }
 
 // ─────────────────────────────────────────────────────────────────
+// Audio Synchronization
+// ─────────────────────────────────────────────────────────────────
+
+/** A viseme entry mapping a time range to a viseme name. */
+export interface VisemeEntry {
+  /** Start time in seconds. */
+  start: number;
+  /** End time in seconds. */
+  end: number;
+  /** Viseme identifier (e.g. 'AA', 'EE', 'OH'). */
+  viseme: string;
+}
+
+/** A named time marker within an audio track. */
+export interface AudioMarker {
+  /** Marker name. */
+  name: string;
+  /** Time position in seconds. */
+  time: number;
+}
+
+/** Options for binding a parameter to an audio property. */
+export interface AudioParameterBindingOptions {
+  /** Audio property to bind to: 'amplitude', 'time', or 'progress'. Default 'amplitude'. */
+  source?: 'amplitude' | 'time' | 'progress';
+  /** Minimum output value. Default 0. */
+  min?: number;
+  /** Maximum output value. Default 1. */
+  max?: number;
+}
+
+/** Options for constructing an AudioSync instance. */
+export interface AudioSyncOptions {
+  /** Event bus for emitting audio events. */
+  eventBus?: EventBus;
+  /** Parameter system for parameter bindings. */
+  parameterSystem?: ParameterSystem;
+}
+
+/**
+ * Audio synchronization for WFL Animator.
+ * Supports Web Audio API in browsers and falls back to a stub
+ * implementation in Node.js for testability.
+ */
+export declare class AudioSync {
+  constructor(options?: AudioSyncOptions);
+
+  // ── Core audio control ─────────────────────────────────────────
+
+  /**
+   * Load an audio file from a URL.
+   * @param url - URL of the audio file.
+   */
+  loadAudio(url: string): Promise<void>;
+
+  /** Start or resume playback. */
+  play(): void;
+
+  /** Pause playback. */
+  pause(): void;
+
+  /** Stop playback and reset to the beginning. */
+  stop(): void;
+
+  /**
+   * Seek to a specific time in seconds.
+   * @param time - Target time in seconds.
+   */
+  seek(time: number): void;
+
+  // ── Properties ─────────────────────────────────────────────────
+
+  /** Current playback position in seconds. */
+  readonly currentTime: number;
+
+  /** Total duration of the loaded audio in seconds. */
+  readonly duration: number;
+
+  /** Whether audio is currently playing. */
+  readonly isPlaying: boolean;
+
+  /** Volume level from 0 (silent) to 1 (full). */
+  volume: number;
+
+  // ── Lip sync / Viseme support ──────────────────────────────────
+
+  /**
+   * Set the viseme map (time ranges to viseme names).
+   * @param map - Array of viseme entries sorted by start time.
+   */
+  setVisemeMap(map: VisemeEntry[]): void;
+
+  /**
+   * Get the current viseme based on playback position.
+   * @returns Current viseme name, or `null` if none matches.
+   */
+  getCurrentViseme(): string | null;
+
+  // ── Parameter binding ──────────────────────────────────────────
+
+  /**
+   * Bind a parameter to an audio property.
+   * @param paramName - Name of the parameter in the parameter system.
+   * @param options - Binding options (source, min, max).
+   */
+  bindToParameter(paramName: string, options?: AudioParameterBindingOptions): void;
+
+  /**
+   * Remove a parameter binding.
+   * @param paramName - Name of the parameter to unbind.
+   */
+  unbindParameter(paramName: string): void;
+
+  // ── Marker / cue system ────────────────────────────────────────
+
+  /**
+   * Add a named time marker.
+   * @param name - Marker name.
+   * @param time - Time position in seconds.
+   */
+  addMarker(name: string, time: number): void;
+
+  /**
+   * Remove a named marker.
+   * @param name - Marker name to remove.
+   */
+  removeMarker(name: string): void;
+
+  /**
+   * Get all markers.
+   * @returns Array of marker objects.
+   */
+  getMarkers(): AudioMarker[];
+
+  /**
+   * Register a callback for when playback reaches a marker.
+   * @param name - Marker name.
+   * @param callback - Invoked with marker info when reached.
+   * @returns Unsubscribe function.
+   */
+  onMarker(name: string, callback: (marker: AudioMarker) => void): Unsubscribe;
+
+  // ── Update loop ────────────────────────────────────────────────
+
+  /**
+   * Called each frame from the animation loop.
+   * Checks markers, updates bound parameters, emits events.
+   * @param deltaTime - Time since last frame in seconds.
+   */
+  update(deltaTime: number): void;
+
+  // ── Cleanup ────────────────────────────────────────────────────
+
+  /** Dispose of all resources. */
+  dispose(): void;
+}
+
+// ─────────────────────────────────────────────────────────────────
 // Main WFLAnimator Class
 // ─────────────────────────────────────────────────────────────────
 
@@ -1427,6 +1592,10 @@ export declare class WFLAnimator {
   eyeSprites: HTMLImageElement[];
   /** Position offsets for sprite compositing. */
   spritePositions: SpritePositions;
+
+  // ── Audio synchronization ───────────────────────────────────────
+  /** Audio synchronization system. */
+  audioSync: AudioSync;
 
   // ── Subsystems ──────────────────────────────────────────────────
   /** Event bus instance. */

@@ -12,6 +12,7 @@ import { EventTypes, globalEventBus } from './core/event-bus.js';
 import { StreamingState, StreamingAnimationLoader } from './core/streaming.js';
 import { PermissionDialog, PermissionActions, globalPermissionManager } from './core/permission.js';
 import { globalSessionStore } from './core/session-store.js';
+import { AudioSync } from './audio-sync.js';
 
 export class WFLAnimator {
   constructor(options = {}) {
@@ -40,6 +41,12 @@ export class WFLAnimator {
     this.permissions = options.permissionManager || globalPermissionManager;
     this.sessionStore = options.sessionStore || globalSessionStore;
     this.permissionDialog = null;
+
+    // Audio synchronization
+    this.audioSync = new AudioSync({
+      eventBus: this.eventBus,
+      parameterSystem: this.parameters
+    });
 
     // Session management
     this.currentSession = null;
@@ -367,6 +374,9 @@ export class WFLAnimator {
 
       // Update rigging
       this.rigging.update(deltaTime);
+
+      // Update audio sync
+      this.audioSync.update(deltaTime);
 
       // Emit frame event
       this.eventBus.emit({
@@ -832,6 +842,9 @@ export class WFLAnimator {
       this.permissionDialog = null;
     }
 
+    // Dispose audio sync
+    this.audioSync.dispose();
+
     this.eventBus.emit({
       type: EventTypes.ANIMATION_STOP,
       payload: { animator: 'WFLAnimator' }
@@ -853,6 +866,7 @@ export class WFLAnimator {
 }
 
 // Re-export modules for direct access
+export { AudioSync } from './audio-sync.js';
 export { EventBus, EventTypes, globalEventBus } from './core/event-bus.js';
 export { StreamingState, StreamingAnimationLoader } from './core/streaming.js';
 export { PermissionManager, PermissionDialog, PermissionActions, globalPermissionManager } from './core/permission.js';
